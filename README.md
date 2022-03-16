@@ -24,6 +24,6 @@ Aplicações desenvolvidas para o Hotel Pousada do Sol que se comunicam diretame
 - [Diarias](/diarias): Comparativo de diárias dos hotéis na Booking por período.
 - [Receitas](/receitas): Comparativo de receitas por histórico.
 - [Reservas](/reservas): Comparativo de reservas por origem.
-- [SaldosEstoque](/saldos estoque): Listagem de saldos atuais dos itens por estoque.
-- [TarifaFacil](/tarifa facil): Exibe as melhores tarifas de todas as classes de apartamento por período para auxiliar na venda direta.
+- [SaldosEstoque](/saldosestoque): Listagem de saldos atuais dos itens por estoque.
+- [TarifaFacil](/tarifafacil): Exibe as melhores tarifas de todas as classes de apartamento por período para auxiliar na venda direta.
 - [Termometro](/termometro): Comparativo de resultados (despesas x receitas) por mês ou semestre.
