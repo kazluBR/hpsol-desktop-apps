@@ -7,7 +7,6 @@ import time
 from PyQt5.QtWidgets import (
     QMainWindow,
     QApplication,
-    QWidget,
     QTableWidgetItem,
     QMessageBox,
     QFileDialog,
