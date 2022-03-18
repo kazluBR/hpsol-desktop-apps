@@ -16,6 +16,10 @@ Aplicações desenvolvidas para o Hotel Pousada do Sol que se comunicam diretame
 - Atualizar UI após modificar interface.ui: `./{app_name} pyuic5 -o interface.py interface.ui`
 - Gerar executável do app (exe dentro da pasta dist): `./{app_name} pyinstaller -F -w main.py`
 
+## Qt Designer
+
+- Baixar o [designer](https://build-system.fman.io/qt-designer-download) para poder editar as interfaces ui.
+
 ## Aplicativos
 
 - [A&B](/a&b): Comparativo de receitas por pontos de venda.
