@@ -15,27 +15,28 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import QDate, QThread, Qt, QTimer, pyqtSignal
+from decouple import config
 from interface import Ui_MainWindow
 
 POUSADA_DO_SOL = 257826
 
 
 class Worker(QThread):
-    addHotel = pyqtSignal(int, "QString", float)
+    addHotel = pyqtSignal(int, str, float)
 
     def __init__(self, url):
         QThread.__init__(self)
         self.url = url
         self.headers = {
-            "x-rapidapi-host": "apidojo-booking-v1.p.rapidapi.com",
-            "x-rapidapi-key": "d01f210c0amsh1a9ef21e5c06669p148c8ejsn34644c8acd17",
+            "x-rapidapi-host": config("RAPID_API_HOST"),
+            "x-rapidapi-key": config("RAPID_API_KEY"),
         }
 
     def stop(self):
         self.terminate()
 
     def run(self):
-        conn = http.client.HTTPSConnection("apidojo-booking-v1.p.rapidapi.com")
+        conn = http.client.HTTPSConnection(config("RAPID_API_HOST"))
         conn.request("GET", self.url, headers=self.headers)
 
         res = conn.getresponse()
