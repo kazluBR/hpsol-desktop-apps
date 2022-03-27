@@ -3,6 +3,7 @@ import json
 import traceback
 import csv
 import time
+import unicodedata
 
 from PyQt5.QtWidgets import (
     QMainWindow,
@@ -20,6 +21,8 @@ POUSADA_DO_SOL = 257826
 
 
 class Worker(QThread):
+    addHotel = pyqtSignal(int, "QString", float)
+
     def __init__(self, url):
         QThread.__init__(self)
         self.url = url
@@ -27,9 +30,6 @@ class Worker(QThread):
             "x-rapidapi-host": "apidojo-booking-v1.p.rapidapi.com",
             "x-rapidapi-key": "d01f210c0amsh1a9ef21e5c06669p148c8ejsn34644c8acd17",
         }
-
-    def __del__(self):
-        self.wait()
 
     def stop(self):
         self.terminate()
@@ -51,8 +51,7 @@ class Worker(QThread):
             except KeyError:
                 hotel_valor = 0.00
                 pass
-            self.emit(
-                pyqtSignal("addHotel(int,QString,float)"),
+            self.addHotel.emit(
                 hotel_id,
                 hotel_nome,
                 hotel_valor,
@@ -78,6 +77,7 @@ class AppComparaDiarias(QMainWindow):
         self.progresso.setWindowTitle("Aguarde")
         self.progresso.setWindowModality(Qt.WindowModal)
         self.progresso.canceled.connect(self.cancelar)
+        self.progresso.cancel()
         self.contador = QTimer()
         self.contador.timeout.connect(self.carregando)
 
@@ -148,10 +148,8 @@ class AppComparaDiarias(QMainWindow):
                 )
             )
             self.worker = Worker(url)
-            self.connect(
-                self.worker, pyqtSignal("addHotel(int,QString,float)"), self.addHotel
-            )
-            self.connect(self.worker, pyqtSignal("finished()"), self.preencherRanking)
+            self.worker.addHotel.connect(self.addHotel)
+            self.worker.finished.connect(self.preencherRanking)
             self.contador.start()
             self.worker.start()
         except Exception as e:
@@ -168,7 +166,7 @@ class AppComparaDiarias(QMainWindow):
                 self, "Salvar...", "comparativo", "CSV(*.csv)"
             )
             if not caminho.isEmpty():
-                with open(unicode(caminho), "wb") as arquivo:
+                with open(unicodedata(caminho), "wb") as arquivo:
                     data_in = self.ui.dateEditEntrada.date().toPyDate()
                     data_out = self.ui.dateEditSaida.date().toPyDate()
                     periodo = (

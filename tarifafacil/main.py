@@ -21,6 +21,8 @@ POUSADA_DO_SOL = 257826
 
 
 class Worker(QThread):
+    setValorBooking = pyqtSignal(int)
+
     def __init__(self, url):
         QThread.__init__(self)
         self.url = url
@@ -28,20 +30,15 @@ class Worker(QThread):
             "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0)"
         }
 
-    def __del__(self):
-        self.wait()
-
     def stop(self):
         self.terminate()
 
     def run(self):
         valor = 0
         while True:
-            request = urllib3.Request(self.url, headers=self.user_agent)
-            html = urllib3.urlopen(request).read()
-            with open("page.html", "a") as f:
-                f.write(html)
-            conteudo = BeautifulSoup(html, "lxml")
+            http = urllib3.PoolManager()
+            response = http.request("GET", self.url, headers=self.user_agent)
+            conteudo = BeautifulSoup(response.data, "html.parser")
             hoteis_encontrados = conteudo.find_all("div", {"class": "sr_item"})
             for hotel in hoteis_encontrados:
                 if int(hotel["data-hotelid"]) == POUSADA_DO_SOL:
@@ -60,7 +57,7 @@ class Worker(QThread):
                     break
             else:
                 break
-        self.emit(pyqtSignal("setValorBooking(int)"), valor)
+        self.setValorBooking.emit(valor)
 
 
 class AppTarifaFacil(QMainWindow):
@@ -81,6 +78,7 @@ class AppTarifaFacil(QMainWindow):
         self.progresso.setWindowTitle("Aguarde")
         self.progresso.setWindowModality(Qt.WindowModal)
         self.progresso.canceled.connect(self.cancelar)
+        self.progresso.cancel()
         self.contador = QTimer()
         self.contador.timeout.connect(self.carregando)
 
@@ -103,7 +101,7 @@ class AppTarifaFacil(QMainWindow):
 
     def setValorBooking(self, valor):
         if valor > 0:
-            self.valorBooking = valor / self.diarias
+            self.valorBooking = valor / float(self.diarias)
         else:
             self.valorBooking = 999
 
@@ -130,10 +128,8 @@ class AppTarifaFacil(QMainWindow):
             )
         )
         self.worker = Worker(url)
-        self.connect(
-            self.worker, pyqtSignal("setValorBooking(int)"), self.setValorBooking
-        )
-        self.connect(self.worker, pyqtSignal("finished()"), self.preencherTarifario)
+        self.worker.setValorBooking.connect(self.setValorBooking)
+        self.worker.finished.connect(self.preencherTarifario)
         self.contador.start()
         self.worker.start()
 
@@ -176,7 +172,7 @@ class AppTarifaFacil(QMainWindow):
                 self.ocupacoes.append(percentual)
                 self.dias.append(d.strftime("%d/%m/%y"))
                 d += delta
-                self.diarias += 1.0
+                self.diarias += 1
             self.ui.tableWidgetOcupacao.setColumnCount(self.diarias)
             self.ui.tableWidgetOcupacao.setRowCount(1)
             self.ui.tableWidgetOcupacao.setHorizontalHeaderLabels(self.dias)
@@ -206,13 +202,15 @@ class AppTarifaFacil(QMainWindow):
                     str(self.valorBooking),
                 )
                 self.cur.execute(consulta)
+                contrato = "1"
+                nome_contrato = ""
                 for x in self.cur.fetchall():
                     contrato = x[0]
                     nome_contrato = x[1]
                 self.ui.lineEditTarifario.setText(nome_contrato)
                 self.ui.lineEditDiarias.setText(str(int(self.diarias)))
                 self.ui.lineEditTaxas.setText(
-                    "R$ " + str(int(3 * self.diarias)) + ",00"
+                    "R$ " + str(int(3 * float(self.diarias))) + ",00"
                 )
                 aptos_disp = []
                 for i in range(len(self.aptos) - 1):
