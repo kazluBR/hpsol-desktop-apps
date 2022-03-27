@@ -43,11 +43,11 @@ class Worker(QThread):
 
         json_data = json.loads(data.decode("utf-8"))
 
-        for hoteis in json_data["result"]:
-            hotel_id = int(hoteis["hotel_id"])
-            hotel_nome = hoteis["hotel_name"]
+        for hotel in json_data["result"]:
+            hotel_id = int(hotel["hotel_id"])
+            hotel_nome = hotel["hotel_name"]
             try:
-                hotel_valor = float(hoteis["price_breakdown"]["gross_price"])
+                hotel_valor = float(hotel["price_breakdown"]["gross_price"])
             except KeyError:
                 hotel_valor = 0.00
                 pass
