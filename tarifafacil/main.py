@@ -1,6 +1,7 @@
 import firebirdsql as fdb
+import http.client
+import json
 import datetime as dt
-import urllib3
 import traceback
 import time
 
@@ -11,56 +12,44 @@ from PyQt5.QtWidgets import (
     QProgressDialog,
 )
 from PyQt5.QtCore import QDate, QThread, Qt, QTimer, pyqtSignal
-from bs4 import BeautifulSoup
 from decouple import config
 from interface import Ui_MainWindow
-
-BOOKING_URL = "https://www.booking.com"
 
 POUSADA_DO_SOL = 257826
 
 
 class Worker(QThread):
+    setValorBooking = pyqtSignal(float)
+
     def __init__(self, url):
         QThread.__init__(self)
         self.url = url
-        self.user_agent = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0)"
+        self.headers = {
+            "x-rapidapi-host": config("RAPID_API_HOST"),
+            "x-rapidapi-key": config("RAPID_API_KEY"),
         }
-
-    def __del__(self):
-        self.wait()
 
     def stop(self):
         self.terminate()
 
     def run(self):
-        valor = 0
-        while True:
-            request = urllib3.Request(self.url, headers=self.user_agent)
-            html = urllib3.urlopen(request).read()
-            with open("page.html", "a") as f:
-                f.write(html)
-            conteudo = BeautifulSoup(html, "lxml")
-            hoteis_encontrados = conteudo.find_all("div", {"class": "sr_item"})
-            for hotel in hoteis_encontrados:
-                if int(hotel["data-hotelid"]) == POUSADA_DO_SOL:
-                    if hotel.find("strong", {"class": "price"}):
-                        hotel_valor_text = hotel.find("strong", {"class": "price"}).text
-                        valor = int("".join(c for c in hotel_valor_text if c.isdigit()))
-                        break
-            if valor > 0:
+        valor = 0.00
+        conn = http.client.HTTPSConnection(config("RAPID_API_HOST"))
+        conn.request("GET", self.url, headers=self.headers)
+
+        res = conn.getresponse()
+        data = res.read()
+
+        json_data = json.loads(data.decode("utf-8"))
+
+        for hotel in json_data["result"]:
+            if int(hotel["hotel_id"]) == POUSADA_DO_SOL:
+                try:
+                    valor = float(hotel["price_breakdown"]["gross_price"])
+                except KeyError:
+                    pass
                 break
-            paginacao = conteudo.find("div", {"class": "results-paging"})
-            if paginacao:
-                proximo = paginacao.find("a", {"class": "paging-next"})
-                if proximo:
-                    self.url = BOOKING_URL + proximo["href"]
-                else:
-                    break
-            else:
-                break
-        self.emit(pyqtSignal("setValorBooking(int)"), valor)
+        self.setValorBooking.emit(valor)
 
 
 class AppTarifaFacil(QMainWindow):
@@ -81,6 +70,7 @@ class AppTarifaFacil(QMainWindow):
         self.progresso.setWindowTitle("Aguarde")
         self.progresso.setWindowModality(Qt.WindowModal)
         self.progresso.canceled.connect(self.cancelar)
+        self.progresso.cancel()
         self.contador = QTimer()
         self.contador.timeout.connect(self.carregando)
 
@@ -103,37 +93,30 @@ class AppTarifaFacil(QMainWindow):
 
     def setValorBooking(self, valor):
         if valor > 0:
-            self.valorBooking = valor / self.diarias
+            self.valorBooking = valor / float(self.diarias)
         else:
             self.valorBooking = 999
 
     def buscaValorBooking(self):
         url = (
-            "{booking}/searchresults.pt-br.html?"
-            "checkin_month={mes_in}&"
-            "checkin_monthday={dia_in}&"
-            "checkin_year={ano_in}&"
-            "checkout_month={mes_out}&"
-            "checkout_monthday={dia_out}&"
-            "checkout_year={ano_out}&"
-            "no_rooms=1&"
-            "group_adults=2&"
-            "ss=Aracaju&"
-            "nflt=class%3D3%3B".format(
-                booking=BOOKING_URL,
-                mes_in=self.data_in.strftime("%m"),
-                dia_in=self.data_in.strftime("%d"),
-                ano_in=self.data_in.strftime("%Y"),
-                mes_out=self.data_out.strftime("%m"),
-                dia_out=self.data_out.strftime("%d"),
-                ano_out=self.data_out.strftime("%Y"),
+            "/properties/list?search_id=none&"
+            "order_by=popularity&"
+            "languagecode=pt-br&"
+            "search_type=city&"
+            "offset=0&"
+            "dest_ids=-625529&"
+            "categories_filter=breakfast_included::1,property_type::204&"
+            "guest_qty=2&"
+            "arrival_date={data_in}&"
+            "departure_date={data_out}&"
+            "room_qty=1".format(
+                data_in=self.data_in.strftime("%Y-%m-%d"),
+                data_out=self.data_out.strftime("%Y-%m-%d"),
             )
         )
         self.worker = Worker(url)
-        self.connect(
-            self.worker, pyqtSignal("setValorBooking(int)"), self.setValorBooking
-        )
-        self.connect(self.worker, pyqtSignal("finished()"), self.preencherTarifario)
+        self.worker.setValorBooking.connect(self.setValorBooking)
+        self.worker.finished.connect(self.preencherTarifario)
         self.contador.start()
         self.worker.start()
 
@@ -176,7 +159,7 @@ class AppTarifaFacil(QMainWindow):
                 self.ocupacoes.append(percentual)
                 self.dias.append(d.strftime("%d/%m/%y"))
                 d += delta
-                self.diarias += 1.0
+                self.diarias += 1
             self.ui.tableWidgetOcupacao.setColumnCount(self.diarias)
             self.ui.tableWidgetOcupacao.setRowCount(1)
             self.ui.tableWidgetOcupacao.setHorizontalHeaderLabels(self.dias)
@@ -206,13 +189,15 @@ class AppTarifaFacil(QMainWindow):
                     str(self.valorBooking),
                 )
                 self.cur.execute(consulta)
+                contrato = "0"
+                nome_contrato = ""
                 for x in self.cur.fetchall():
                     contrato = x[0]
                     nome_contrato = x[1]
                 self.ui.lineEditTarifario.setText(nome_contrato)
                 self.ui.lineEditDiarias.setText(str(int(self.diarias)))
                 self.ui.lineEditTaxas.setText(
-                    "R$ " + str(int(3 * self.diarias)) + ",00"
+                    "R$ " + str(int(3 * float(self.diarias))) + ",00"
                 )
                 aptos_disp = []
                 for i in range(len(self.aptos) - 1):

@@ -3,6 +3,7 @@ import json
 import traceback
 import csv
 import time
+import unicodedata
 
 from PyQt5.QtWidgets import (
     QMainWindow,
@@ -14,28 +15,28 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import QDate, QThread, Qt, QTimer, pyqtSignal
+from decouple import config
 from interface import Ui_MainWindow
 
 POUSADA_DO_SOL = 257826
 
 
 class Worker(QThread):
+    addHotel = pyqtSignal(int, str, float)
+
     def __init__(self, url):
         QThread.__init__(self)
         self.url = url
         self.headers = {
-            "x-rapidapi-host": "apidojo-booking-v1.p.rapidapi.com",
-            "x-rapidapi-key": "d01f210c0amsh1a9ef21e5c06669p148c8ejsn34644c8acd17",
+            "x-rapidapi-host": config("RAPID_API_HOST"),
+            "x-rapidapi-key": config("RAPID_API_KEY"),
         }
-
-    def __del__(self):
-        self.wait()
 
     def stop(self):
         self.terminate()
 
     def run(self):
-        conn = http.client.HTTPSConnection("apidojo-booking-v1.p.rapidapi.com")
+        conn = http.client.HTTPSConnection(config("RAPID_API_HOST"))
         conn.request("GET", self.url, headers=self.headers)
 
         res = conn.getresponse()
@@ -43,16 +44,15 @@ class Worker(QThread):
 
         json_data = json.loads(data.decode("utf-8"))
 
-        for hoteis in json_data["result"]:
-            hotel_id = int(hoteis["hotel_id"])
-            hotel_nome = hoteis["hotel_name"]
+        for hotel in json_data["result"]:
+            hotel_id = int(hotel["hotel_id"])
+            hotel_nome = hotel["hotel_name"]
             try:
-                hotel_valor = float(hoteis["price_breakdown"]["gross_price"])
+                hotel_valor = float(hotel["price_breakdown"]["gross_price"])
             except KeyError:
                 hotel_valor = 0.00
                 pass
-            self.emit(
-                pyqtSignal("addHotel(int,QString,float)"),
+            self.addHotel.emit(
                 hotel_id,
                 hotel_nome,
                 hotel_valor,
@@ -78,6 +78,7 @@ class AppComparaDiarias(QMainWindow):
         self.progresso.setWindowTitle("Aguarde")
         self.progresso.setWindowModality(Qt.WindowModal)
         self.progresso.canceled.connect(self.cancelar)
+        self.progresso.cancel()
         self.contador = QTimer()
         self.contador.timeout.connect(self.carregando)
 
@@ -148,10 +149,8 @@ class AppComparaDiarias(QMainWindow):
                 )
             )
             self.worker = Worker(url)
-            self.connect(
-                self.worker, pyqtSignal("addHotel(int,QString,float)"), self.addHotel
-            )
-            self.connect(self.worker, pyqtSignal("finished()"), self.preencherRanking)
+            self.worker.addHotel.connect(self.addHotel)
+            self.worker.finished.connect(self.preencherRanking)
             self.contador.start()
             self.worker.start()
         except Exception as e:
@@ -168,7 +167,7 @@ class AppComparaDiarias(QMainWindow):
                 self, "Salvar...", "comparativo", "CSV(*.csv)"
             )
             if not caminho.isEmpty():
-                with open(unicode(caminho), "wb") as arquivo:
+                with open(unicodedata(caminho), "wb") as arquivo:
                     data_in = self.ui.dateEditEntrada.date().toPyDate()
                     data_out = self.ui.dateEditSaida.date().toPyDate()
                     periodo = (
