@@ -5,9 +5,8 @@ import traceback
 from PyQt5.QtWidgets import QMainWindow, QApplication, QTableWidgetItem
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import QDate
+from decouple import config
 from interface import Ui_MainWindow
-
-BANCO_ATUAL = "C:\\nethotel\POUSADA_SOL.FB"
 
 
 class AppComparativoReceitas(QMainWindow):
@@ -48,10 +47,11 @@ class AppComparativoReceitas(QMainWindow):
     def verificarPeriodo(self, data_in, data_out, tabela):
         try:
             con = fdb.connect(
-                host="172.16.1.11",
-                database=BANCO_ATUAL,
-                user="SYSDBA",
-                password="masterkey",
+                host=config("HOST"),
+                database=config("BANCO_ATUAL"),
+                user=config("USER"),
+                password=config("PASSWORD"),
+                charset="UTF8",
             )
             cur = con.cursor()
             consulta = """SELECT DISTINCT T.DESCRICAO, SUM(T.VALOR) TOTAL FROM (

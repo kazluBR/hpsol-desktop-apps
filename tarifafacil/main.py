@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import QDate, QThread, Qt, QTimer, pyqtSignal
 from bs4 import BeautifulSoup
+from decouple import config
 from interface import Ui_MainWindow
 
 BOOKING_URL = "https://www.booking.com"
@@ -139,10 +140,10 @@ class AppTarifaFacil(QMainWindow):
     def verificarPeriodo(self):
         try:
             self.con = fdb.connect(
-                host="172.16.1.11",
-                database="C:\\nethotel\POUSADA_SOL.FB",
-                user="SYSDBA",
-                password="masterkey",
+                host=config("HOST"),
+                database=config("BANCO_ATUAL"),
+                user=config("USER"),
+                password=config("PASSWORD"),
                 charset="UTF8",
             )
             self.data_in = self.ui.dateEditEntrada.date().toPyDate()
