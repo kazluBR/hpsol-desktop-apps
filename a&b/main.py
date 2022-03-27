@@ -5,10 +5,8 @@ import traceback
 from PyQt5.QtWidgets import QMainWindow, QApplication, QTableWidgetItem
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import QDate
+from decouple import config
 from interface import Ui_MainWindow
-
-BANCO_ATUAL = "C:\\nethotel\POUSADA_SOL.FB"
-BANCO_ANTIGO = "C:\\nethotel\PSOL2_CONSULTA.FB"
 
 
 class AppComparativoAeB(QMainWindow):
@@ -63,17 +61,19 @@ class AppComparativoAeB(QMainWindow):
             antbug = ""
             if data_in >= dt.date(2017, 11, 1):
                 con = fdb.connect(
-                    host="172.16.1.11",
-                    database=BANCO_ATUAL,
-                    user="SYSDBA",
-                    password="masterkey",
+                    host=config("HOST"),
+                    database=config("BANCO_ATUAL"),
+                    user=config("USER"),
+                    password=config("PASSWORD"),
+                    charset="UTF8",
                 )
             else:
                 con = fdb.connect(
-                    host="172.16.1.11",
-                    database=BANCO_ANTIGO,
-                    user="SYSDBA",
-                    password="masterkey",
+                    host=config("HOST"),
+                    database=config("BANCO_ANTIGO"),
+                    user=config("USER"),
+                    password=config("PASSWORD"),
+                    charset="UTF8",
                 )
                 antbug = "AND R.F_HOSPEDE <> 43656 AND R.F_HOSPEDE <> 11103 AND R.F_HOSPEDE <> 583"
             cur = con.cursor()

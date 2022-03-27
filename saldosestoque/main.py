@@ -3,9 +3,8 @@ import traceback
 import os
 
 from PyQt5.QtWidgets import QMainWindow, QApplication, QTableWidgetItem
+from decouple import config
 from interface import Ui_MainWindow
-
-BANCO_ATUAL = "C:\\nethotel\POUSADA_SOL.FB"
 
 
 class AppSaldosEstoque(QMainWindow):
@@ -29,10 +28,11 @@ class AppSaldosEstoque(QMainWindow):
     def saldoEstoque(self, subal):
         try:
             con = fdb.connect(
-                host="172.16.1.11",
-                database=BANCO_ATUAL,
-                user="SYSDBA",
-                password="masterkey",
+                host=config("HOST"),
+                database=config("BANCO_ATUAL"),
+                user=config("USER"),
+                password=config("PASSWORD"),
+                charset="UTF8",
             )
             cur = con.cursor()
             criterio = (

@@ -4,9 +4,8 @@ import datetime as dt
 import traceback
 
 from PyQt5.QtWidgets import QMainWindow, QApplication
+from decouple import config
 from interface import Ui_MainWindow
-
-BANCO = "C:\\nethotel\POUSADA_SOL.FB"
 
 
 class Termometro(QMainWindow):
@@ -212,7 +211,11 @@ T.DESCRICAO NOT CONTAINING '*' AND T.CODGRUPO NOT LIKE '1.2.11%%'"""
     def carregarBarraProgresso(self):
         try:
             con = fdb.connect(
-                host="172.16.1.11", database=BANCO, user="SYSDBA", password="masterkey"
+                host=config("HOST"),
+                database=config("BANCO_ATUAL"),
+                user=config("USER"),
+                password=config("PASSWORD"),
+                charset="UTF8",
             )
             cur = con.cursor()
             previsao = "1"
