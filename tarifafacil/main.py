@@ -38,18 +38,18 @@ class Worker(QThread):
         conn.request("GET", self.url, headers=self.headers)
 
         res = conn.getresponse()
-        data = res.read()
+        if res.status == 200:
+            data = res.read()
+            json_data = json.loads(data.decode("utf-8"))
 
-        json_data = json.loads(data.decode("utf-8"))
-
-        for hotel in json_data["result"]:
-            if int(hotel["hotel_id"]) == POUSADA_DO_SOL:
-                try:
-                    valor = float(hotel["price_breakdown"]["gross_price"])
-                except KeyError:
-                    pass
-                break
-        self.setValorBooking.emit(valor)
+            for hotel in json_data["result"]:
+                if int(hotel["hotel_id"]) == POUSADA_DO_SOL:
+                    try:
+                        valor = float(hotel["price_breakdown"]["gross_price"])
+                    except KeyError:
+                        pass
+                    break
+            self.setValorBooking.emit(valor)
 
 
 class AppTarifaFacil(QMainWindow):
@@ -99,17 +99,17 @@ class AppTarifaFacil(QMainWindow):
 
     def buscaValorBooking(self):
         url = (
-            "/properties/list?search_id=none&"
+            "/v1/hotels/search?"
             "order_by=popularity&"
-            "languagecode=pt-br&"
-            "search_type=city&"
-            "offset=0&"
-            "dest_ids=-625529&"
-            "categories_filter=breakfast_included::1,property_type::204&"
-            "guest_qty=2&"
-            "arrival_date={data_in}&"
-            "departure_date={data_out}&"
-            "room_qty=1".format(
+            "locale=pt-br&"
+            "dest_type=city&"
+            "dest_id=-625529&"
+            "adults_number=2&"
+            "filter_by_currency=BRL&"
+            "units=metric&"
+            "checkin_date={data_in}&"
+            "checkout_date={data_out}&"
+            "room_number=1".format(
                 data_in=self.data_in.strftime("%Y-%m-%d"),
                 data_out=self.data_out.strftime("%Y-%m-%d"),
             )
