@@ -3,7 +3,6 @@ import json
 import traceback
 import csv
 import time
-import unicodedata
 
 from PyQt5.QtWidgets import (
     QMainWindow,
@@ -167,22 +166,21 @@ class AppComparaDiarias(QMainWindow):
             caminho = QFileDialog.getSaveFileName(
                 self, "Salvar...", "comparativo", "CSV(*.csv)"
             )
-            if not caminho.isEmpty():
-                with open(unicodedata(caminho), "wb") as arquivo:
-                    data_in = self.ui.dateEditEntrada.date().toPyDate()
-                    data_out = self.ui.dateEditSaida.date().toPyDate()
-                    periodo = (
-                        "De "
-                        + data_in.strftime("%d/%m/%y")
-                        + " a "
-                        + data_out.strftime("%d/%m/%y")
-                    )
-                    writer = csv.writer(arquivo, delimiter=";")
-                    writer.writerow(["Hotel", periodo])
-                    for linha in range(self.ui.tableWidgetComparativo.rowCount()):
-                        hotel = self.ui.tableWidgetComparativo.item(linha, 0)
-                        valor = self.ui.tableWidgetComparativo.item(linha, 1)
-                        writer.writerow([hotel.text(), valor.text()])
+            with open(caminho[0], "w") as arquivo:
+                data_in = self.ui.dateEditEntrada.date().toPyDate()
+                data_out = self.ui.dateEditSaida.date().toPyDate()
+                periodo = (
+                    "De "
+                    + data_in.strftime("%d/%m/%y")
+                    + " a "
+                    + data_out.strftime("%d/%m/%y")
+                )
+                writer = csv.writer(arquivo, delimiter=";")
+                writer.writerow(["Hotel", periodo])
+                for linha in range(self.ui.tableWidgetComparativo.rowCount()):
+                    hotel = self.ui.tableWidgetComparativo.item(linha, 0)
+                    valor = self.ui.tableWidgetComparativo.item(linha, 1)
+                    writer.writerow([hotel.text(), valor.text()])
         except Exception as e:
             QMessageBox.critical(self, "Messagem", "Ocorreu um erro ao salvar arquivo.")
             print(str(e))
