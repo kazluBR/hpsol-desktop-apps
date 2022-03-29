@@ -3,7 +3,6 @@ import json
 import traceback
 import csv
 import time
-import unicodedata
 
 from PyQt5.QtWidgets import (
     QMainWindow,
@@ -40,23 +39,23 @@ class Worker(QThread):
         conn.request("GET", self.url, headers=self.headers)
 
         res = conn.getresponse()
-        data = res.read()
+        if res.status == 200:
+            data = res.read()
+            json_data = json.loads(data.decode("utf-8"))
 
-        json_data = json.loads(data.decode("utf-8"))
-
-        for hotel in json_data["result"]:
-            hotel_id = int(hotel["hotel_id"])
-            hotel_nome = hotel["hotel_name"]
-            try:
-                hotel_valor = float(hotel["price_breakdown"]["gross_price"])
-            except KeyError:
-                hotel_valor = 0.00
-                pass
-            self.addHotel.emit(
-                hotel_id,
-                hotel_nome,
-                hotel_valor,
-            )
+            for hotel in json_data["result"]:
+                hotel_id = int(hotel["hotel_id"])
+                hotel_nome = hotel["hotel_name"]
+                try:
+                    hotel_valor = float(hotel["price_breakdown"]["gross_price"])
+                except KeyError:
+                    hotel_valor = 0.00
+                    pass
+                self.addHotel.emit(
+                    hotel_id,
+                    hotel_nome,
+                    hotel_valor,
+                )
 
 
 class AppComparaDiarias(QMainWindow):
@@ -100,6 +99,7 @@ class AppComparaDiarias(QMainWindow):
         self.ui.dateEditSaida.setDate(self.ui.dateEditEntrada.date().addDays(1))
 
     def preencherRanking(self):
+        self.ui.tableWidgetComparativo.setRowCount(0)
         if len(self.hoteis) > 0:
             self.hoteis.sort(key=lambda x: x[2], reverse=True)
             self.ui.tableWidgetComparativo.setColumnCount(2)
@@ -133,17 +133,17 @@ class AppComparaDiarias(QMainWindow):
             data_in = self.ui.dateEditEntrada.date().toPyDate()
             data_out = self.ui.dateEditSaida.date().toPyDate()
             url = (
-                "/properties/list?search_id=none&"
+                "/v1/hotels/search?"
                 "order_by=popularity&"
-                "languagecode=pt-br&"
-                "search_type=city&"
-                "offset=0&"
-                "dest_ids=-625529&"
-                "categories_filter=breakfast_included::1,property_type::204&"
-                "guest_qty=2&"
-                "arrival_date={data_in}&"
-                "departure_date={data_out}&"
-                "room_qty=1".format(
+                "locale=pt-br&"
+                "dest_type=city&"
+                "dest_id=-625529&"
+                "adults_number=2&"
+                "filter_by_currency=BRL&"
+                "units=metric&"
+                "checkin_date={data_in}&"
+                "checkout_date={data_out}&"
+                "room_number=1".format(
                     data_in=data_in.strftime("%Y-%m-%d"),
                     data_out=data_out.strftime("%Y-%m-%d"),
                 )
@@ -166,22 +166,21 @@ class AppComparaDiarias(QMainWindow):
             caminho = QFileDialog.getSaveFileName(
                 self, "Salvar...", "comparativo", "CSV(*.csv)"
             )
-            if not caminho.isEmpty():
-                with open(unicodedata(caminho), "wb") as arquivo:
-                    data_in = self.ui.dateEditEntrada.date().toPyDate()
-                    data_out = self.ui.dateEditSaida.date().toPyDate()
-                    periodo = (
-                        "De "
-                        + data_in.strftime("%d/%m/%y")
-                        + " a "
-                        + data_out.strftime("%d/%m/%y")
-                    )
-                    writer = csv.writer(arquivo, delimiter=";")
-                    writer.writerow(["Hotel", periodo])
-                    for linha in range(self.ui.tableWidgetComparativo.rowCount()):
-                        hotel = self.ui.tableWidgetComparativo.item(linha, 0)
-                        valor = self.ui.tableWidgetComparativo.item(linha, 1)
-                        writer.writerow([hotel.text(), valor.text()])
+            with open(caminho[0], "w") as arquivo:
+                data_in = self.ui.dateEditEntrada.date().toPyDate()
+                data_out = self.ui.dateEditSaida.date().toPyDate()
+                periodo = (
+                    "De "
+                    + data_in.strftime("%d/%m/%y")
+                    + " a "
+                    + data_out.strftime("%d/%m/%y")
+                )
+                writer = csv.writer(arquivo, delimiter=";")
+                writer.writerow(["Hotel", periodo])
+                for linha in range(self.ui.tableWidgetComparativo.rowCount()):
+                    hotel = self.ui.tableWidgetComparativo.item(linha, 0)
+                    valor = self.ui.tableWidgetComparativo.item(linha, 1)
+                    writer.writerow([hotel.text(), valor.text()])
         except Exception as e:
             QMessageBox.critical(self, "Messagem", "Ocorreu um erro ao salvar arquivo.")
             print(str(e))
